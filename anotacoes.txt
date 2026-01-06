@@ -1,0 +1,502 @@
+Crie seu APP:
+############################################
+python3 manage.py startapp meu_app
+############################################
+
+[Instale o APP  e faça as configurações iniciais.]
+
+[Modifique o arquivo asgi para:]
+
+############################################
+import os
+
+from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.core.asgi import get_asgi_application
+import meu_app.routing
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'teste_channels.settings')
+
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),
+    "websocket": AuthMiddlewareStack(
+        URLRouter(
+            meu_app.routing.websocket_urlpatterns
+        )
+    )
+})
+############################################
+
+[Informe no settings:]
+############################################
+    ASGI_APPLICATION = "teste_channels.asgi.application"
+############################################
+
+[Crie uma url para meu_app.]
+
+############################################
+from django.contrib import admin
+from django.urls import path, include
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('meu_app.urls'))
+]
+#############################################
+
+[Crie uma URL para views home.]
+#############################################
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.home, name="home")
+]
+#############################################
+
+[Crie a view home.]
+
+#############################################
+def home(request):
+    return render(request, 'home.html')
+#############################################
+
+[Crie a home.html.]
+#############################################
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+   
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Channels</title>
+</head>
+<body>
+    <button id="btn">
+        Enviar
+    </button>
+
+
+
+    <script>
+    
+        const chatSocket = new WebSocket("ws://127.0.0.1:8000/ws/app/")
+
+        chatSocket.onmessage = function(event){
+            const data = JSON.parse(event.data)
+            console.log(data.message)
+
+        }
+
+        var btn = document.getElementById('btn')
+        btn.addEventListener("click", function(event){
+            chatSocket.send(JSON.stringify({
+                'message': 'teste'
+            }));
+
+
+
+        }, true)
+
+
+    </script>
+
+</body>
+</html>
+#############################################
+
+[No arquivo routing faça:]
+#############################################
+from django.urls import path
+
+from . import consumers
+
+websocket_urlpatterns = [
+    path('ws/app/', consumers.TesteConsumer.as_asgi()),
+]
+#############################################
+
+[Agora vamos definir o consumers]
+#############################################
+import json
+from channels.generic.websocket import WebsocketConsumer
+
+class TesteConsumer(WebsocketConsumer):
+    def connect(self):
+        self.accept()
+
+    def disconnect(self, code):
+        pass
+
+    def receive(self, text_data):
+        text_data_json = json.loads(text_data)
+        message = text_data_json['message']
+
+        self.send(text_data=json.dumps({
+            'message': message
+        }))
+#############################################
+
+[Adicione a configuração do redis.]
+#############################################
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+#############################################
+
+[Altere a consumers.]
+#############################################
+import json
+from asgiref.sync import async_to_sync
+from channels.generic.websocket import WebsocketConsumer
+
+class TesteConsumer(WebsocketConsumer):
+    def connect(self):
+        self.room_group_name = 'todos'
+        
+        async_to_sync(self.channel_layer.group_add)(
+            self.room_group_name,
+            self.channel_name
+        )
+
+        self.accept()
+
+    def disconnect(self, close_code):
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_group_name,
+            self.channel_name
+        )
+
+    # Receive message from WebSocket
+    def receive(self, text_data):
+        text_data_json = json.loads(text_data)
+        message = text_data_json['message']
+
+        # Send message to room group
+        async_to_sync(self.channel_layer.group_send)(
+            self.room_group_name,
+            {
+                'type': 'chat_message',
+                'message': message
+            }
+        )
+
+    # Receive message from room group
+    def chat_message(self, event):
+        message = event['message']
+
+        # Send message to WebSocket
+        self.send(text_data=json.dumps({
+            'message': message
+        }))
+#############################################
+
+[## Channels 5.0
+
+Na nova versão do Django Channels tivemos algumas diferenças pequenas nas configurações iniciais.
+
+Agora você precisa instalar o Daphne com:]
+#############################################
+pip install daphne
+#############################################
+
+[No [settings.py]em INSTALLED APPS você não precisa mais instalar o channels e sim instalar o Daphne:]
+#############################################
+INSTALLED_APPS = [
+    'daphne',
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+]
+#############################################
+
+[# Django channels
+
+Acesse diretamente pelo Notion:
+
+```python
+https://grizzly-amaranthus-f6a.notion.site/Django-channels-b7a0741566294c35b15821c4f78fa011?pvs=4
+```
+
+# Usuários do Channels 5.0 leia o final do material de apoio!
+
+Crie seu APP:
+
+```jsx
+python3 manage.py startapp meu_app
+```
+
+Instale o APP  e faça as configurações iniciais.
+
+Modifique o arquivo asgi para:
+
+```python
+import os
+
+from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.core.asgi import get_asgi_application
+import meu_app.routing
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'teste_channels.settings')
+
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),
+    "websocket": AuthMiddlewareStack(
+        URLRouter(
+            meu_app.routing.websocket_urlpatterns
+        )
+    )
+})
+```
+
+Informe no settings:
+
+```python
+ASGI_APPLICATION = "teste_channels.asgi.application"
+```
+
+Crie uma url para meu_app.
+
+```python
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('meu_app.urls'))
+]
+```
+
+Crie uma URL para views home.
+
+```python
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.home, name="home")
+]
+```
+
+Crie a view home.
+
+```python
+def home(request):
+    return render(request, 'home.html')
+```
+
+Crie a home.html.
+
+```python
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+   
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Channels</title>
+</head>
+<body>
+    <button id="btn">
+        Enviar
+    </button>
+
+    <script>
+    
+        const chatSocket = new WebSocket("ws://127.0.0.1:8000/ws/app/")
+
+        chatSocket.onmessage = function(event){
+            const data = JSON.parse(event.data)
+            console.log(data.message)
+
+        }
+
+        var btn = document.getElementById('btn')
+        btn.addEventListener("click", function(event){
+            chatSocket.send(JSON.stringify({
+                'message': 'teste'
+            }));
+
+        }, true)
+
+    </script>
+
+</body>
+</html>
+```
+
+No arquivo routing faça:
+
+```python
+from django.urls import path
+
+from . import consumers
+
+websocket_urlpatterns = [
+    path('ws/app/', consumers.TesteConsumer.as_asgi()),
+]
+```
+
+Agora vamos definir o consumers
+
+```python
+import json
+from channels.generic.websocket import WebsocketConsumer
+
+class TesteConsumer(WebsocketConsumer):
+    def connect(self):
+        self.accept()
+
+    def disconnect(self, code):
+        pass
+
+    def receive(self, text_data):
+        text_data_json = json.loads(text_data)
+        message = text_data_json['message']
+
+        self.send(text_data=json.dumps({
+            'message': message
+        }))
+```
+
+Adicione a configuração do redis.
+
+```python
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+```
+
+Altere a consumers.
+
+```python
+import json
+from asgiref.sync import async_to_sync
+from channels.generic.websocket import WebsocketConsumer
+
+class TesteConsumer(WebsocketConsumer):
+    def connect(self):
+        self.room_group_name = 'todos'
+        
+        async_to_sync(self.channel_layer.group_add)(
+            self.room_group_name,
+            self.channel_name
+        )
+
+        self.accept()
+
+    def disconnect(self, close_code):
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_group_name,
+            self.channel_name
+        )
+
+    # Receive message from WebSocket
+    def receive(self, text_data):
+        text_data_json = json.loads(text_data)
+        message = text_data_json['message']
+
+        # Send message to room group
+        async_to_sync(self.channel_layer.group_send)(
+            self.room_group_name,
+            {
+                'type': 'chat_message',
+                'message': message
+            }
+        )
+
+    # Receive message from room group
+    def chat_message(self, event):
+        message = event['message']
+
+        # Send message to WebSocket
+        self.send(text_data=json.dumps({
+            'message': message
+        }))
+```
+
+## Channels 5.0
+
+Na nova versão do Django Channels tivemos algumas diferenças pequenas nas configurações iniciais.
+
+Agora você precisa instalar o Daphne com:
+
+```python
+pip install daphne
+```
+
+No [settings.py](http://settings.py) em INSTALLED APPS você não precisa mais instalar o channels e sim instalar o Daphne:
+
+```python
+INSTALLED_APPS = [
+    'daphne',
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+]
+```
+
+Em [asgi.py](http://asgi.py) também é preciso realizar algumas alterações:
+
+```python
+import os
+from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.security.websocket import AllowedHostsOriginValidator
+from django.core.asgi import get_asgi_application
+import meu_app.routing
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "meu_site.settings")
+
+django_asgi_app = get_asgi_application()
+
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_app,
+        "websocket": AllowedHostsOriginValidator(
+            AuthMiddlewareStack(URLRouter(meu_app.routing.websocket_urlpatterns))
+        ),
+    }
+)
+```
+
+Essas atualizações são apenas para as configurações iniciais do channels, toda a lógica e o funcionamento permanece exatamente igual como na aula.]
+#############################################
+import os
+from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.security.websocket import AllowedHostsOriginValidator
+from django.core.asgi import get_asgi_application
+import meu_app.routing
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "meu_site.settings")
+
+django_asgi_app = get_asgi_application()
+
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_app,
+        "websocket": AllowedHostsOriginValidator(
+            AuthMiddlewareStack(URLRouter(meu_app.routing.websocket_urlpatterns))
+        ),
+    }
+)
+#############################################
