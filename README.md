@@ -10,7 +10,7 @@ O sistema foi desenvolvido para fins de aprendizado e pode ser expandido para ap
 ## Layout web
 ![Web 1](https://github.com/GuilhermeGTM/ChatEmTempoReal/blob/main/image_git/1.png)
 
-![Web 1](https://github.com/GuilhermeGTM/ChatEmTempoReal/blob/main/image_git/2.png)
+![Web 1](https://github.com/GuilhermeGTM/ChatEmTempoReal/blob/main/image_git/3.png)
 
 
 ---
